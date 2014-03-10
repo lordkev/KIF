@@ -86,6 +86,19 @@ typedef struct __GSEvent * GSEventRef;
     return classesToSkip;
 }
 
++ (NSSet *)classesToSkipAccessibilitySubelementResursion
+{
+    static NSSet *classesToSkip;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        // UIDatePicker contains hundreds of thousands of placeholder accessibility elements that aren't useful to KIF,
+        // so don't recurse into a date picker when searching for matching accessibility elements
+        classesToSkip = [[NSSet alloc] initWithObjects:[UICollectionView class], nil];
+    });
+    
+    return classesToSkip;
+}
+
 - (UIAccessibilityElement *)accessibilityElementWithLabel:(NSString *)label
 {
     return [self accessibilityElementWithLabel:label traits:UIAccessibilityTraitNone];
@@ -175,6 +188,10 @@ typedef struct __GSEvent * GSEventRef;
                 matchingButOccludedElement = element;
                 continue;
             }
+        }
+        
+        if ([[[self class] classesToSkipAccessibilitySubelementResursion] containsObject:[self class]]) {
+            return matchingButOccludedElement;
         }
         
         // If the view is an accessibility container, and we didn't find a matching subview,
